@@ -1,0 +1,51 @@
+name: Build nnnotes wheel for Android aarch64
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+
+      - name: Install Rust with Android target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+
+      - name: Setup Android NDK
+        uses: nttld/setup-ndk@v1
+        id: ndk
+        with:
+          ndk-version: r27
+          add-to-path: true
+
+      - name: Install maturin
+        run: pip install maturin
+
+      - name: Download nnnotes source
+        run: |
+          pip download nnnotes --no-binary :all: --no-deps -d ./src
+          cd ./src
+          tar xzf nnnotes-*.tar.gz
+          mv nnnotes-*/ nnnotes-src/
+          echo "SOURCE_DIR=$PWD/nnnotes-src" >> $GITHUB_ENV
+
+      - name: Build wheel
+        env:
+          CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER: ${{ steps.ndk.outputs.ndk-path }}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang
+          CC_aarch64_linux_android: ${{ steps.ndk.outputs.ndk-path }}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang
+          AR_aarch64_linux_android: ${{ steps.ndk.outputs.ndk-path }}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar
+        run: |
+          cd $SOURCE_DIR
+          maturin build --release --target aarch64-linux-android --out ./wheels
+
+      - name: Upload wheel
+        uses: actions/upload-artifact@v4
+        with:
+          name: nnnotes-android-wheel
+          path: ${{ env.SOURCE_DIR }}/wheels/*.whl
