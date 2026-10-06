@@ -29,6 +29,7 @@ jobs:
 
       - name: Download nnnotes source
         run: |
+          mkdir -p ./src
           pip download nnnotes --no-binary :all: --no-deps -d ./src
           cd ./src
           tar xzf nnnotes-*.tar.gz
@@ -40,7 +41,21 @@ jobs:
           CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER: ${{ steps.ndk.outputs.ndk-path }}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang
           CC_aarch64_linux_android: ${{ steps.ndk.outputs.ndk-path }}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang
           AR_aarch64_linux_android: ${{ steps.ndk.outputs.ndk-path }}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar
+          PYO3_CONFIG_FILE: ${{ github.workspace }}/pyo3-config.txt
         run: |
+          cat > ${{ github.workspace }}/pyo3-config.txt << 'EOF'
+          implementation=CPython
+          version=3.14
+          shared=false
+          abi3=true
+          lib_name=python3
+          lib_dir=
+          executable=
+          pointer_width=64
+          build_flags=
+          suppress_build_script_link_lines=true
+          EOF
+          cat ${{ github.workspace }}/pyo3-config.txt
           cd $SOURCE_DIR
           maturin build --release --target aarch64-linux-android --out ./wheels
 
